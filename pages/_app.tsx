@@ -4,7 +4,7 @@ import { ChainId, ThirdwebProvider } from '@thirdweb-dev/react'
 
 function MyApp({ Component, pageProps }: AppProps) {
   return (
-    //rinkey the test network for ETH networks n
+    //rinkey the test network for ETH networks
     <ThirdwebProvider desiredChainId={ChainId.Rinkeby}>
       <Component {...pageProps} />
     </ThirdwebProvider>
