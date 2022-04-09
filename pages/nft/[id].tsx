@@ -1,19 +1,60 @@
-import React from 'react'
-import { useAddress, useDisconnect, useMetamask } from '@thirdweb-dev/react'
+import React, { useEffect, useState } from 'react'
+import {
+  useAddress,
+  useDisconnect,
+  useMetamask,
+  useNFTDrop,
+} from '@thirdweb-dev/react'
 import { GetServerSideProps } from 'next'
 import { sanityClient, urlFor } from '../../sanity'
 import { Collection } from '../../typings'
 import Link from 'next/link'
+import { BigNumber } from 'ethers'
 
 interface Props {
   collection: Collection
 }
 function NFTDropPage({ collection }: Props) {
+  const [claimedSupply, setClaimedSupply] = useState<number>(0)
+  const [totalSupply, setTotalSupply] = useState<BigNumber>()
+  const [priceInEth, setPriceInEth] = useState<string>()
+  const [loading, setLoading] = useState<boolean>(true)
+  const nftDrop = useNFTDrop(collection.address)
+  // console.log(collection)
+
   //auth
   const connectWithMetamask = useMetamask()
   const address = useAddress()
   const disconnect = useDisconnect()
-  // console.table(address)
+  // console.table(collection.address)
+
+  useEffect(() => {
+    if (!nftDrop) return
+
+    const fetchPrice = async () => {
+      const claimConditions = await nftDrop.claimConditions.getAll()
+      // console.log('=====>', claimConditions)
+      setPriceInEth(claimConditions?.[0].currencyMetadata.displayValue)
+    }
+
+    // console.table(fetchPrice())
+  }, [nftDrop])
+
+  useEffect(() => {
+    setLoading(true)
+    if (!nftDrop) return
+
+    const fetchNFTDropData = async () => {
+      const claimed = await nftDrop.getAllClaimed()
+      const total = await nftDrop.totalSupply()
+
+      setClaimedSupply(claimed.length)
+      setTotalSupply(total)
+      setLoading(false)
+    }
+
+    fetchNFTDropData()
+  }, [nftDrop])
 
   return (
     <div className="flex h-screen flex-col lg:grid lg:grid-cols-10">
@@ -52,7 +93,7 @@ function NFTDropPage({ collection }: Props) {
             onClick={() => (address ? disconnect() : connectWithMetamask())}
             className="rounded-full bg-rose-400 px-4 py-2 text-xs font-bold text-white lg:px-5 lg:py-3"
           >
-            {address ? 'Sign Out' : 'Sign IN'}
+            {address ? 'Sign Out' : 'Sign In'}
           </button>
         </header>
 
@@ -73,10 +114,41 @@ function NFTDropPage({ collection }: Props) {
             {' '}
             {collection.title}
           </h1>
-          <p className="pt-2 text-xl text-green-500"> 13 / 21 NFT's claimed</p>
+
+          {loading ? (
+            <p className="animate-bounce pt-2 text-xl text-green-500">
+              Loading Supply Count...
+            </p>
+          ) : (
+            <p className="pt-2 text-xl text-green-500">
+              {' '}
+              {claimedSupply} / {totalSupply?.toString()} NFT's claimed
+            </p>
+          )}
+
+          {loading && (
+            <img
+              className="h-80 w-80 object-contain"
+              src="https://cdn.hackernoon.com/images/0*4Gzjgh9Y7Gu8KEtZ.gif"
+              alt=""
+            />
+          )}
         </div>
-        <button className=" mt-10 h-16 w-full rounded-full bg-red-500 font-bold text-white">
-          Mint NFT (0.01 ETH)
+        <button
+          disabled={
+            loading || claimedSupply === totalSupply?.toNumber() || !address
+          }
+          className=" mt-10 h-16 w-full rounded-full bg-red-500 font-bold text-white disabled:bg-gray-400"
+        >
+          {loading ? (
+            <>loading</>
+          ) : claimedSupply === totalSupply?.toNumber() ? (
+            <>SOLD OUT</>
+          ) : !address ? (
+            <>Sign in to MNT</>
+          ) : (
+            <span className="font-bold">Mint NFT ({priceInEth} ETH)</span>
+          )}
         </button>
       </div>
     </div>
