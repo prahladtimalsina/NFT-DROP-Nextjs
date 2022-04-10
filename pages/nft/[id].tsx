@@ -10,6 +10,7 @@ import { sanityClient, urlFor } from '../../sanity'
 import { Collection } from '../../typings'
 import Link from 'next/link'
 import { BigNumber } from 'ethers'
+import toast, { Toaster } from 'react-hot-toast'
 
 interface Props {
   collection: Collection
@@ -42,6 +43,7 @@ function NFTDropPage({ collection }: Props) {
 
   useEffect(() => {
     setLoading(true)
+
     if (!nftDrop) return
 
     const fetchNFTDropData = async () => {
@@ -56,8 +58,63 @@ function NFTDropPage({ collection }: Props) {
     fetchNFTDropData()
   }, [nftDrop])
 
+  const mintNft = () => {
+    if (!nftDrop || !address) return
+
+    const quantity = 1 //how many unique NFTs you want to claim
+    setLoading(true)
+    const notification = toast.loading('Minting ETH...', {
+      style: {
+        background: 'white',
+        color: 'green',
+        fontWeight: 'bolder',
+        fontSize: '17px',
+        padding: '20px',
+      },
+    })
+
+    nftDrop
+      .claimTo(address, quantity)
+      .then(async (tx) => {
+        const receipt = tx[0].receipt //the transaction receipt
+        const claimedToken = tx[0].id //the id of the NFT claimed
+        const claimedNFT = await tx[0].data() //(optional get the claimed NFT metadata)
+
+        toast('HOORAY... You Successfully Minted!!', {
+          duration: 8000,
+          style: {
+            background: 'green',
+            color: 'white',
+            fontWeight: 'bolder',
+            fontSize: '17px',
+            padding: '20px',
+          },
+        })
+        console.log(receipt)
+        console.log(claimedToken)
+        console.log(claimedNFT)
+      })
+      .catch((err) => {
+        console.log(err)
+        toast('Whoops... Something went wrong !', {
+          style: {
+            background: 'red',
+            color: 'white',
+            fontWeight: 'bolder',
+            fontSize: '17px',
+            padding: '20px',
+          },
+        })
+      })
+      .finally(() => {
+        setLoading(false)
+        toast.dismiss(notification)
+      })
+  }
+
   return (
     <div className="flex h-screen flex-col lg:grid lg:grid-cols-10">
+      <Toaster position="bottom-center" />
       <div className="bg-gradient-to-br from-cyan-800 to-rose-500 lg:col-span-4">
         <div
           className=" flex flex-col items-center justify-center py-2 lg:min-h-screen
@@ -135,6 +192,7 @@ function NFTDropPage({ collection }: Props) {
           )}
         </div>
         <button
+          onClick={mintNft}
           disabled={
             loading || claimedSupply === totalSupply?.toNumber() || !address
           }
